@@ -94,3 +94,26 @@ MERGE(u:IAM_User {name:princ[key], arn:princ[key]})
 MERGE(r:IAM_Role {name:role})
 MERGE (u)-[:CAN_ASSUME_ROLE]->(r)
 RETURN u,r
+
+// Load Principal and Roles that can Assume --- 2
+CALL apoc.load.json("file://opt/account_auth.json",
+'.RoleDetailList[*]') YIELD value as row
+UNWIND row.AssumeRolePolicyDocument as arpd
+UNWIND arpd.Statement as stmt
+WITH stmt,row.RoleName as role
+WHERE stmt.Effect = 'Allow'
+UNWIND keys(stmt.Principal) AS key
+WITH role,key, stmt.Principal as princ
+WHERE key = 'AWS'
+OPTIONAL MATCH(r:IAM_Role {arn:princ[key]})
+with r, princ, key
+where r is null
+//with role, r
+//MATCH(r:IAM_Role)
+//WHERE not r.name = role
+//with role, r
+//MATCH(u:IAM_Role {arn:princ[key]})
+//MATCH(r:IAM_Role {name:role})
+//MERGE(r:IAM_Role {name:role})
+//MERGE (u)-[:CAN_ASSUME_ROLE]->(r)
+RETURN r, princ, princ[key]
